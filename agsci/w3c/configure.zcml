@@ -1,0 +1,13 @@
+<configure xmlns="http://namespaces.zope.org/zope"
+           xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+           i18n_domain="agsci.w3c">
+
+    <genericsetup:registerProfile
+        name="default"
+        title="agsci.w3c"
+        directory="profiles/default"
+        description="Checks for w3c standards"
+        provides="Products.GenericSetup.interfaces.EXTENSION"
+    />
+
+</configure>
