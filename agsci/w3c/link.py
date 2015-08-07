@@ -65,10 +65,7 @@ def findBrokenLinks(context, redirects={}, shortened=[], url_pattern=None, debug
             except HTTPError:
                 return_codes[url] = 404
                 return 404
-            except URLError:
-                return_codes[url] = 999
-                return 999
-            except InvalidURL:
+            except:
                 return_codes[url] = 999
                 return 999
     
