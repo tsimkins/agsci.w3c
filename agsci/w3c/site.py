@@ -118,9 +118,12 @@ def checkSiteColorContrast(site):
 
     return compliant
 
+def getSiteURL(site):
+    return translation.get(site.getId())
+
 def translateURL(context, https=False):
     site = getSite()
-    site_url = translation.get(site.getId())
+    site_url = getSiteURL(site)
     translated_url = ''
     if site_url:
         context_url = context.absolute_url().replace(site.absolute_url(), site_url)
