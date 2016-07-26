@@ -43,6 +43,8 @@ def findBrokenLinks(context, redirects={}, shortened=[], url_pattern=None, debug
     
     def checkLink(url, cgi=False, anchors=False):
 
+        original_url = url
+
         # Strip params unless cgi is set to True
         if not cgi and '?' in url:
             url = url.split('?')[0]
@@ -61,32 +63,32 @@ def findBrokenLinks(context, redirects={}, shortened=[], url_pattern=None, debug
                 data = urllib2.urlopen(url, None, 30)
             except ValueError:
                 return_codes[url] = 999
-                return 999
             except HTTPError:
                 return_codes[url] = 404
-                return 404
             except:
                 return_codes[url] = 999
-                return 999
-    
-            if data.getcode() == 200:
-                if url == data.geturl():
-                    return_codes[url] = 200
-                elif data.geturl().startswith('http://www.psu.edu/search/gss/'):
-                    return_codes[url] = 404
-                else:
-                    if 'utm_' in data.geturl() or 'webaccess.psu.edu' in data.geturl():
-                        # Treat Google Analytics tracked as 200's, don't modify
-                        # Same for links requiring login
-                        return_codes[url] = 200
-                    else:
-                        return_codes[url] = 302
-                        redirects[url] = data.geturl()
             else:
-                return_codes[url] = data.getcode()
-                if data.getcode() in [301,302]:
-                    redirects[url] = data.geturl()
-    
+                if data.getcode() == 200:
+                    if url == data.geturl():
+                        return_codes[url] = 200
+                    elif data.geturl().startswith('http://www.psu.edu/search/gss/'):
+                        return_codes[url] = 404
+                    else:
+                        if 'utm_' in data.geturl() or 'webaccess.psu.edu' in data.geturl():
+                            # Treat Google Analytics tracked as 200's, don't modify
+                            # Same for links requiring login
+                            return_codes[url] = 200
+                        else:
+                            return_codes[url] = 302
+                            redirects[url] = data.geturl()
+                            redirects[original_url] = data.geturl()
+                else:
+                    return_codes[url] = data.getcode()
+                    if data.getcode() in [301,302]:
+                        redirects[url] = data.geturl()
+                        redirects[original_url] = data.geturl()
+
+        return_codes[original_url] = return_codes[url]
         return return_codes[url]
 
 
