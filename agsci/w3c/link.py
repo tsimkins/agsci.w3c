@@ -169,7 +169,7 @@ def findBrokenLinks(
 
     _q.update(contentFilter)
 
-    results = portal_catalog.searchResults()
+    results = portal_catalog.searchResults(_q)
 
     for r in results:
         try:
