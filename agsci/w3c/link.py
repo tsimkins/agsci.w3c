@@ -18,29 +18,31 @@ from agsci.w3c.content import getText, setText
 
 import urllib2
 from urllib2 import URLError, HTTPError
-from httplib import InvalidURL 
-from BeautifulSoup import BeautifulSoup 
+from httplib import InvalidURL
+from BeautifulSoup import BeautifulSoup
 
 from urlparse import urljoin
 
 
-def findBrokenLinks(context, redirects={}, shortened=[], url_pattern=None, debug=False):
+def findBrokenLinks(
+    context, redirects={}, shortened=[],
+    url_pattern=None, debug=False, contentFilter={}
+):
 
     # Return Codes dict
     return_codes = {}
 
-
     # Stuff known redirects and shortened into return codes
     for url in redirects.keys():
         return_codes[url] = 302
-    
+
     for url in shortened:
         return_codes[url] = 200
 
     # Actual method for checking a link.  Inside the findBrokenLinks function
     # because we need access to the return_codes, etc. structures and I didn't
     # want to make them global in the module.
-    
+
     def checkLink(url, cgi=False, anchors=False):
 
         original_url = url
@@ -54,10 +56,10 @@ def findBrokenLinks(context, redirects={}, shortened=[], url_pattern=None, debug
 
         if url.startswith('mailto:'):
             return 200
-    
+
         if not url.startswith('http'):
             return 500
-    
+
         if not return_codes.get(url):
             try:
                 data = urllib2.urlopen(url, None, 30)
@@ -99,14 +101,14 @@ def findBrokenLinks(context, redirects={}, shortened=[], url_pattern=None, debug
 
         if url.startswith('mailto:'):
             return None
-            
+
         if not (url.startswith('http:') or url.startswith('https:')):
             # Calculate relative URL, replace ../ because Plone folders don't
             # end with /
 
             if url.startswith(site.absolute_url()):
                 url = url.replace(site.absolute_url(), '')
-            
+
             url = urljoin(base_url, url)
 
             if '../' in url:
@@ -117,55 +119,87 @@ def findBrokenLinks(context, redirects={}, shortened=[], url_pattern=None, debug
             return None
         else:
             return url
-    
-    # Plone site and search path    
+
+    # Plone site and search path
     site = getSite()
     search_path = "/".join(context.getPhysicalPath())
     portal_catalog = getToolByName(site, "portal_catalog")
 
     # Return list headers
-    outfile = [['Type', 'Object URL', 'Link URL', 'Status', 'Redirect']]
+    outfile = [['Type', 'State', 'Object URL', 'Link URL', 'Status', 'Redirect']]
 
     urls = []
 
     # Get link objects
-    results = portal_catalog.searchResults({'portal_type' : 'Link', 'path' : search_path})
+    _q = {
+        'portal_type' : 'Link',
+        'path' : search_path
+    }
+
+    _q.update(contentFilter)
+
+    results = portal_catalog.searchResults(_q)
 
     for r in results:
-        o = r.getObject()
+        try:
+            o = r.getObject()
+        except KeyError:
+            continue
         base_url = translateURL(o)
-        
+
         url = filterURL(base_url, o.remoteUrl)
-        
+
         if url:
-            urls.append([r.portal_type, base_url, url])
+            urls.append([r.Type, r.review_state, base_url, url])
 
 
     # Get links in text
-    results = portal_catalog.searchResults({'portal_type' : ['Document', 'Event', 'Folder', 'HomePage', 'News Item', 'Topic',], 'path' : search_path})
+
+    _q = {
+        'portal_type' : [
+            'Document',
+            'Event',
+            'Folder',
+            'HomePage',
+            'News Item',
+            'Topic',
+        ],
+        'path' : search_path
+    }
+
+    _q.update(contentFilter)
+
+    results = portal_catalog.searchResults()
 
     for r in results:
-        o = r.getObject()
+        try:
+            o = r.getObject()
+        except KeyError:
+            continue
+
         base_url = translateURL(o)
-        
+
         text = getText(o)
 
-        soup = BeautifulSoup(text)
+        try:
+            soup = BeautifulSoup(text)
+        except TypeError:
+            continue
 
         for a in soup.findAll('a'):
             url = filterURL(base_url, a.get('href', ''))
 
             if url:
-                urls.append(["%s [LINK]" % r.portal_type, base_url, url])
+                urls.append(["%s [LINK]" % r.Type, r.review_state, base_url, url])
 
         for img in soup.findAll('img'):
             url = filterURL(base_url, img.get('src', ''))
 
             if url:
-                urls.append(["%s [IMAGE]" % r.portal_type, base_url, url])
+                urls.append(["%s [IMAGE]" % r.Type, r.review_state, base_url, url])
 
-        
-    for (portal_type, base_url, url) in urls:
+
+    for (portal_type, review_state, base_url, url) in urls:
         print "Checking %s" % url
         status = checkLink(url)
 
