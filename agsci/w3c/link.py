@@ -206,7 +206,7 @@ def findBrokenLinks(
         redirect = redirects.get(url, '')
 
         if debug or status != 200:
-            outfile.append([portal_type, base_url, url, str(status), redirect])
+            outfile.append([portal_type, review_state, base_url, url, str(status), redirect])
 
 
     return outfile
